@@ -22,3 +22,13 @@ _testmain.go
 *.exe
 *.test
 *.prof
+/.vscode
+/build
+/tmp
+/dist
+/.idea
+/*.iml
+*~
+/log
+/out
+/*.log

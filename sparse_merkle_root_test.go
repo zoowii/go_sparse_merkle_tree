@@ -41,8 +41,8 @@ func TestSMTOfPadding(t *testing.T) {
 		panic("smt create failed")
 	}
 	tx3Proof := smt.CreateMerkleProof(HexToBigInt(slotHex))
-	fmt.Printf("tx3 proof: %s\n", BytesToHex(tx3Proof)) // tx3 proof: 0000000000000190d10d96f5d5d50f79d299bff2c49827b594ff484c7ee4dd40f7b4c...
-	fmt.Printf("tree root: %s\n", smt.RootHex())        // tree root: 9da6c64db4a74efca5fe3c6979c992ece8fa88660f1bf8e273508612f77d9fc3
+	fmt.Printf("tx3 proof: %s\n", BytesToHex(tx3Proof))
+	fmt.Printf("tree root: %s\n", smt.RootHex())
 	tree2 := NewEmptySMT(DefaultSMTDepth)
 	tx3VerifyResult := tree2.Verify(HexToBigInt(slotHex), txHash, smt.RootBytes(), tx3Proof)
 	fmt.Printf("tx3 verify result: %v\n", tx3VerifyResult) // result: true

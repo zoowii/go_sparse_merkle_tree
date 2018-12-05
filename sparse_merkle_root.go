@@ -202,7 +202,7 @@ func (smt *SMT) createDefaultNodes(depth uint) []Uint256 {
 	var level uint
 	for level = 1; level <= depth; level++ {
 		prevDefault := defaultNodes[level-1]
-		defaultNodes = append(defaultNodes, smt.HashFunc(append(prevDefault.Bytes(), prevDefault.Bytes()...)))
+		defaultNodes = append(defaultNodes, smt.HashFunc(append(ToDigestBytes(prevDefault.Bytes()), ToDigestBytes(prevDefault.Bytes())...)))
 	}
 	return defaultNodes
 }
@@ -223,14 +223,14 @@ func (smt *SMT) createTree(orderedLeaves *TreeLevelOrderedMap, depth uint, defau
 				coIndex := Uint256Add(index, bigint1)
 				coValue, coValueOk := treeLevel.Get(coIndex)
 				if coValueOk {
-					nextLevel.Set(Uint256Div(index, bigint2), smt.HashFunc(append(value, coValue...)).Bytes())
+					nextLevel.Set(Uint256Div(index, bigint2), ToDigestBytes(smt.HashFunc(append(value, coValue...)).Bytes()))
 				} else {
-					nextLevel.Set(Uint256Div(index, bigint2), smt.HashFunc(append(value, defaultNodes[level].Bytes()...)).Bytes())
+					nextLevel.Set(Uint256Div(index, bigint2), ToDigestBytes(smt.HashFunc(append(value, defaultNodes[level].Bytes()...)).Bytes()))
 				}
 			} else {
 				coIndex := Uint256Sub(index, bigint1)
 				if !treeLevel.ContainsKey(coIndex) {
-					nextLevel.Set(Uint256Div(index, bigint2), smt.HashFunc(append(defaultNodes[level].Bytes(), value...)).Bytes())
+					nextLevel.Set(Uint256Div(index, bigint2), ToDigestBytes(smt.HashFunc(append(defaultNodes[level].Bytes(), value...)).Bytes()))
 				}
 			}
 		}
@@ -288,6 +288,45 @@ func (smt *SMT) CreateMerkleProof(uid Uint256) []byte {
 	return append(proofBytes, proof...)
 }
 
+// HexToBigInt : parse from hex string to big.Int
+func HexToBigInt(hexStr string) *big.Int {
+	n := new(big.Int)
+	n, ok := n.SetString(hexStr, 16)
+	if !ok {
+		return nil
+	}
+	return n
+}
+
+// HexToBytes : parse from hex string to bytes
+func HexToBytes(hexStr string) ([]byte, error) {
+	return hex.DecodeString(hexStr)
+}
+
+// ToDigestBytes : to 32-length bytes(digest type)
+func ToDigestBytes(data []byte) []byte {
+	if len(data) >= 32 {
+		return data
+	}
+	result := make([]byte, 32)
+	for i := 0; i < len(result); i++ {
+		if i < len(result)-len(data) {
+			result[i] = 0
+		} else {
+			result[i] = data[i-(len(result)-len(data))]
+		}
+	}
+	return result
+}
+
+func (smt *SMT) RootBytes() []byte {
+	return ToDigestBytes(smt.Root.Bytes())
+}
+
+func (smt *SMT) RootHex() string {
+	return BytesToHex(smt.RootBytes())
+}
+
 func (smt *SMT) Verify(uid Uint256, leafHash TreeItemHashValue, treeRoot TreeItemHashValue, proof []byte) bool {
 	if len(proof) > 2056 {
 		return false
@@ -298,22 +337,22 @@ func (smt *SMT) Verify(uid Uint256, leafHash TreeItemHashValue, treeRoot TreeIte
 	p := 8
 	computedHash := leafHash
 	if len(leafHash) < 1 {
-		computedHash = smt.DefaultNodes[len(smt.DefaultNodes)-1].Bytes()
+		computedHash = ToDigestBytes(smt.DefaultNodes[len(smt.DefaultNodes)-1].Bytes())
 	}
 	bigint2 := big.NewInt(2)
 	var proofElement []byte
 	var d uint
 	for d = 0; d < smt.Depth; d++ {
 		if Uint256Mod(proofbits, bigint2).Uint64() == 0 {
-			proofElement = smt.DefaultNodes[d].Bytes()
+			proofElement = ToDigestBytes(smt.DefaultNodes[d].Bytes())
 		} else {
-			proofElement = proof[p : p+32]
+			proofElement = ToDigestBytes(proof[p : p+32])
 			p += 32
 		}
 		if Uint256Mod(index, bigint2).Uint64() == 0 {
-			computedHash = smt.HashFunc(append(computedHash, proofElement...)).Bytes()
+			computedHash = ToDigestBytes(smt.HashFunc(append(computedHash, proofElement...)).Bytes())
 		} else {
-			computedHash = smt.HashFunc(append(proofElement, computedHash...)).Bytes()
+			computedHash = ToDigestBytes(smt.HashFunc(append(proofElement, computedHash...)).Bytes())
 		}
 		proofbits = Uint256Div(proofbits, bigint2)
 		index = Uint256Div(index, bigint2)
